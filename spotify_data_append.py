@@ -75,20 +75,35 @@ def get_song_features(songs, track_id):
 
     return df
 
+def make_ranks(df):
+    ''' Makes ranks for each artist according to year'''
+    rank=[]
+
+    # Create ranks for each artist.
+    for year in sorted(list(set(df['year']))):
+        rank+=[i+1 for i in range(len(df[df['year']==year]))]
+    return rank
+
 
 def main():
-    # load in tracks to search on spotify
+    # load in tracks to search on spotify.
     tracklist = pd.read_csv('top_100_hip_hop.csv')
-    # get track ID for each song
+    # get track ID for each song.
     track_id_list = get_track_ids(tracklist['artist'],tracklist['song'])
+
     # Append IDs to loaded dataframe.
     tracklist['track_id'] = track_id_list
-    # Use track IDs to get song features.
+    tracklist['rank'] = make_ranks(tracklist)
+
+    # Use track IDs to get song features and save as dataframe.
     df = get_song_features(tracklist['song'],tracklist['track_id'])
-    # Inner join features on track list.
+
+    # Inner join features on track IDs.
     merged = tracklist.merge(df, how="inner", left_on='track_id',right_on='id').drop_duplicates("track_id").reset_index(drop=True)
+
     # Save the new dataframe as a new CSV.
     merged.to_csv("top_100_hip_hop_.csv",index=False)
 
 if __name__=="__main__":
     main()
+

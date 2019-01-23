@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
 import pandas as pd
 import numpy as np
 
@@ -13,55 +7,53 @@ import plotly.offline as offline
 
 offline.init_notebook_mode(connected=True)
 
-
-# In[20]:
+# Read in data.
 df = pd.read_csv("top_100_hip_hop_.csv")
 
-def make_ranks():
-    ''' Makes ranks for each artist according to year'''
-    rank=[]
 
-    # Create ranks for each artist.
-    for year in sorted(list(set(df['year']))):
-        rank+=[i+1 for i in range(len(df[df['year']==year]))]
-    return rank
+def grouped_artists():
 
+    '''Returns a dictionary of the top artists grouped by year. Used to graph.'''
 
-df['rank'] = make_ranks()
-
-def grouped_artists():   
+    # Return top 10 artists and how many times they were mentioned. 
     top_10 = pd.DataFrame(df['artist'].value_counts()[:10])
+
+    # Save the top 10 artists to a list.
     top_artists = list(top_10.index)
 
-    # get all top 10 artist's songs:
+    # Get top 10 artists' songs by checking against list of top_artists.
     all_by_top = df.loc[df['artist'].isin(top_artists)]
 
+    # Group by artist,year and round their counts.
     grouped = pd.DataFrame(all_by_top.groupby(['artist','year'])['rank'].count())
     grouped['rank'] = round(grouped['rank'],2)
 
+    # Unstack grouped dataframe and convert to dictionary while filling in NaNs with 0.
     new_df = grouped.unstack()
-
     dic = new_df.fillna(0).to_dict()
 
     return dic,top_artists
 
-def make_string(artist,year):
+############### Plotting Parameter Functions ###############
+
+def make_hover_over_text(artist,year):
+
+    ''' Returns hover-over text for plotly time series.'''
+
     x = list(df[(df['artist']==artist)&(df['year']==year)]['song'])
     y = list(df[(df['artist']==artist)&(df['year']==year)]['rank'])
     
     if x:
-        s = 'Songs: ' 
-
-
+        string = 'Songs: ' 
         for song,rank in zip(x,y):
-            s+= f'''<br>{song} #{rank}'''
+            string+= f'''<br>{song} #{rank}'''
     else:
         return ''
-        
-    return s
+
+    return string
 
 def make_conditions(col_list):
-    
+
     ''' Returns an array with lists of conditions for dropdown menus.'''
     
     # Make array full of False values with dimensions of input list.
@@ -69,10 +61,26 @@ def make_conditions(col_list):
     
     for i in range(len(array)):
         array[i][i] = True
-    
+
     return array
 
+def make_buttons(top_artists,conditions):
+
+    '''Returns button options for dropdown menus.'''
+
+    buttons = []
+
+    for artist,condition in zip(top_artists,conditions):
+        dic = {'label':artist,
+            'method':'restyle',
+            'args':[{'visible': condition}]}
+        buttons.append(dic)
+
+    return buttons
+
+############### Plotting Functions ###############
 def plot_gen():
+    ''' Generates 3D scatterplot based on Spotify song features '''
     data = []
     trace = go.Scatter3d(
     x=df['danceability'],
@@ -91,7 +99,6 @@ def plot_gen():
     data.append(trace)
 
     layout = go.Layout(
-        # title="Top Rap Songs of the Decade, by Audio Features",
         scene = dict(
             annotations=[
                 dict(
@@ -156,15 +163,15 @@ def plot_gen():
         )
     )
 
-
     fig = go.Figure(data=data, layout=layout)
 
     return offline.plot(fig, include_plotlyjs=False, output_type='div')
 
 
+def top_10_rappers_bar():
 
+    '''Returns bar chart of the top 10 artists by count.'''
 
-def top_10_rappers():
     top_10 = pd.DataFrame(df['artist'].value_counts()[:10])
 
     trace = go.Bar(
@@ -185,6 +192,11 @@ def top_10_rappers():
         title="# of Times on Billboard Hot 100",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
+        # yaxis=dict(
+        # tickfont=dict(
+        #     size=12,
+        #     color='black'
+        # ))
     )
 
     fig = go.Figure(data=[trace],layout=layout)
@@ -192,43 +204,47 @@ def top_10_rappers():
     return offline.plot(fig, include_plotlyjs=False, output_type='div')
 
 
+def top_10_rappers_line():
 
-
-
-def make_top_rapper_chart():
     data = []
-    buttons=[]
 
-
+    # Invoke grouped_artists() function to get data, and the list of the top artists.
     dic,top_artists = grouped_artists()
 
-    years = [k[1] for k in dic.keys()]
     conditions = make_conditions(top_artists)
+    buttons = make_buttons(top_artists,conditions)
 
+    # 2010-2018
+    years = [k[1] for k in dic.keys()]
+
+    # Loop through top_artists to make traces for plot.
     for artist in top_artists:
+        # Number of songs on billboard hot 100.
         num_hits = [v[artist] for v in dic.values()]
+
+        # Only display the first trace.
+        if artist == top_artists[0]:
+            visible = True
+        else:
+            visible = 'legendonly'
 
         trace = go.Scattergl(
             x=years,
             y=num_hits,
             mode='lines',
             name=artist,
-            text = [make_string(artist,year) for year in years]
+            text = [make_hover_over_text(artist,year) for year in years],
+            visible=visible
             )
         data.append(trace)
 
-    for artist,condition in zip(top_artists,conditions):
-        dic = {'label':artist,
-            'method':'restyle',
-            'args':[{'visible': condition}]}
-        buttons.append(dic)
 
     updatemenus = list([
         dict(
             buttons=buttons,
             x = 1.2,
             xanchor = 'right',
-            y = 1,
+            y = 1.2,
             yanchor = 'top',
             pad = {'l': 0, 't': 0.0},
             bgcolor = '#AAAAAA',
@@ -240,7 +256,7 @@ def make_top_rapper_chart():
     layout = go.Layout(
         updatemenus=updatemenus,
         showlegend=False,
-        title="# of Songs on the Hot 100 Rap Charts",
+        title="# of Unique Songs on the Hot 100 Rap Charts",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
     )
@@ -248,6 +264,5 @@ def make_top_rapper_chart():
 
     fig = go.Figure(data=data, layout=layout)
 
-#     offline.iplot(fig)
     return offline.plot(fig, include_plotlyjs=False, output_type='div')
 
