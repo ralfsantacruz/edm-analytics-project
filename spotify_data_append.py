@@ -16,7 +16,7 @@ adapter = HTTPAdapter(max_retries=retry)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
-
+############### Search Formatting Functions ###############
 def encode_spaces(string_list):
     '''Replaces spaces with %20 for Spotify API search.'''
     encoded = [string.replace(" ", "%20") for string in string_list]
@@ -28,6 +28,8 @@ def clean_search_terms(string):
     cleaned = string.replace("%20Featuring%20","%20").replace("%20X%20","%20").replace("%20x%20","%20").replace("%20VS%20","%20").replace("%20VS%20","%20").replace("#","")
     return cleaned
 
+
+############### Data Fetching Functions ###############
 
 def get_track_ids(artists, songs):
 
@@ -95,6 +97,8 @@ def make_ranks(df):
         rank+=[i+1 for i in range(len(df[df['year']==year]))]
     return rank
 
+
+############### Consolidation Function ###############
 
 def append_features(genre):
 
