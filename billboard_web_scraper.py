@@ -1,19 +1,19 @@
 from bs4 import BeautifulSoup as bs
 import requests
 
-def top_songs(genre,endpoint):
+def billboard_top_songs(genre,endpoint):
     '''
     Scrapes Billboard website to gather the top songs of this decade and writes them to csv.
     '''
-    year = 2010
+    start_year = 2010
     
     artist = []
     title=[]
     years=[]
     
-    while year < 2019:
+    while start_year < 2019:
 
-        url = f"https://www.billboard.com/charts/year-end/{year}/{endpoint}"
+        url = f"https://www.billboard.com/charts/year-end/{start_year}/{endpoint}"
 
         request = requests.get(url)
 
@@ -31,15 +31,15 @@ def top_songs(genre,endpoint):
             artist+=artist_names
             
             # Make a list of years to correspond. Makes for better filtering in pandas.
-            year=[year for i in range(len(artist_names))]
+            year=[start_year for i in range(len(artist_names))]
             years+=year
 
-            year+=1
+            start_year+=1
         else:
             # Account for invalid inputs.
             request.raise_for_status()
     
-    # Refactoring to include genre
+    # Refactoring to include genre.
     with open(f'top_100_{genre}.csv','w') as f:
         f.write('year,artist,song\n')
         for y,a,t in zip(years,artist,title):
@@ -47,7 +47,7 @@ def top_songs(genre,endpoint):
             f.write(f'{y},{a},{t}\n')
 
 if __name__=="__main__":
-    top_songs('test','dfdlffd')
+    billboard_top_songs('test','dfdlffd')
 
         # url = f"https://www.billboard.com/charts/year-end/{year}/hot-dance-electronic--songs"
         # url = f"https://www.billboard.com/charts/year-end/{year}/hot-100-songs"

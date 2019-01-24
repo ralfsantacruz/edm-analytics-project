@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+import os
+
 from spotify_config import spotify_headers
 
 import requests
@@ -76,7 +78,7 @@ def get_song_features(songs, track_id):
         data.append(response)
             
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data).drop(columns= 'error')
 
     return df
 
@@ -110,14 +112,22 @@ def append_features(genre):
     # Use track IDs to get song features and save as dataframe.
     df = get_song_features(tracklist['song'],tracklist['track_id'])
 
-    print('Merging dataframes...')
     # Inner join features on track IDs.
+    print('Merging dataframes...')    
     merged_df = tracklist.merge(df, how="inner", left_on='track_id',right_on='id').drop_duplicates("track_id").reset_index(drop=True)
+
+    # Save the new dataframe as a new CSV as backup.
+    merged_df.to_csv(
+        os.path.join(f"db_backup/top_100_{genre}_.csv"),
+        index=False
+        )
+
+    # Remove the old CSV.
+    os.remove(f'top_100_{genre}.csv')
 
     return merged_df
 
-    # Save the new dataframe as a new CSV.
-    # merged.to_csv(f"top_100_{genre}_.csv",index=False)
+
 
 
 # def main():
