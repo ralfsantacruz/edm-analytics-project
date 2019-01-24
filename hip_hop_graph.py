@@ -5,7 +5,7 @@ import plotly.plotly as py
 import plotly.graph_objs as go
 import plotly.offline as offline
 
-offline.init_notebook_mode(connected=True)
+# offline.init_notebook_mode(connected=True)
 
 # Read in data.
 df = pd.read_csv("top_100_hip_hop_.csv")
