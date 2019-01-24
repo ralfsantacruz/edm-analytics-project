@@ -2,6 +2,9 @@ import sqlalchemy
 import pandas as pd
 from sqlalchemy import create_engine
 
+from billboard_web_scraper import top_songs
+from spotify_data_append import append_features
+
 # Create connection to database.
 database = "music_data"
 psql_engine = create_engine(f"postgresql://postgres:password@localhost/{database}")

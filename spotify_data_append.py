@@ -14,20 +14,26 @@ adapter = HTTPAdapter(max_retries=retry)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
+
 def encode_spaces(string_list):
-    '''Replaces spaces with %20 for Spotify API search'''
+    '''Replaces spaces with %20 for Spotify API search.'''
     encoded = [string.replace(" ", "%20") for string in string_list]
     return encoded
 
 
 def clean_search_terms(string):
     '''Cleans up string for spotify search.'''
-    cleaned = string.replace("%20Featuring%20","%20")    .replace("%20X%20","%20")    .replace("%20x%20","%20")    .replace("%20VS%20","%20")    .replace("%20VS%20","%20")    .replace("#","")
+    cleaned = string.replace("%20Featuring%20","%20").replace("%20X%20","%20").replace("%20x%20","%20").replace("%20VS%20","%20").replace("%20VS%20","%20").replace("#","")
     return cleaned
 
 
 def get_track_ids(artists, songs):
-    '''Returns a list of track IDs for songs. Takes in two lists as arguments. '''
+
+    '''
+    Returns a list of track IDs for songs. Takes in two lists or series as arguments.
+    Artist and Song are plugged into Spotify Search to return IDs. 
+    '''
+
     track_id_list = []
 
     for artist,song in zip(encode_spaces(artists),encode_spaces(songs)):
@@ -61,7 +67,6 @@ def get_track_ids(artists, songs):
 
 def get_song_features(songs, track_id):
     ''' Fetches song features for each track_id via Spotify API. Returns a DataFrame.'''
-
     data = []
     for song,track in zip(songs, track_id):
         print("-"*20)
@@ -75,8 +80,12 @@ def get_song_features(songs, track_id):
 
     return df
 
+
 def make_ranks(df):
-    ''' Makes ranks for each artist according to year'''
+    '''
+    Makes ranks for each artist according to year. Natural order of rows comes from Billboard's ranking.
+    Appends number according to row order by year.
+    '''
     rank=[]
 
     # Create ranks for each artist.
@@ -85,10 +94,13 @@ def make_ranks(df):
     return rank
 
 
-def main():
-    # load in tracks to search on spotify.
-    tracklist = pd.read_csv('top_100_hip_hop.csv')
-    # get track ID for each song.
+def append_features(genre):
+
+    '''Returns a merged dataframe with songs, artists, and Spotify track features.'''
+
+    # Load in tracks to search on spotify.
+    tracklist = pd.read_csv(f'top_100_{genre}.csv')
+    # Get track ID for each song.
     track_id_list = get_track_ids(tracklist['artist'],tracklist['song'])
 
     # Append IDs to loaded dataframe.
@@ -98,12 +110,42 @@ def main():
     # Use track IDs to get song features and save as dataframe.
     df = get_song_features(tracklist['song'],tracklist['track_id'])
 
+    print('Merging dataframes...')
     # Inner join features on track IDs.
-    merged = tracklist.merge(df, how="inner", left_on='track_id',right_on='id').drop_duplicates("track_id").reset_index(drop=True)
+    merged_df = tracklist.merge(df, how="inner", left_on='track_id',right_on='id').drop_duplicates("track_id").reset_index(drop=True)
+
+    return merged_df
 
     # Save the new dataframe as a new CSV.
-    merged.to_csv("top_100_hip_hop_.csv",index=False)
+    # merged.to_csv(f"top_100_{genre}_.csv",index=False)
 
-if __name__=="__main__":
-    main()
+
+# def main():
+#     # Set up requests session and to account for retries should connection errors arise.
+#     session = requests.Session()
+#     retry = Retry(connect=3, backoff_factor=0.5)
+#     adapter = HTTPAdapter(max_retries=retry)
+#     session.mount('http://', adapter)
+#     session.mount('https://', adapter)
+
+#     # load in tracks to search on spotify.
+#     tracklist = pd.read_csv('top_100_hip_hop.csv')
+#     # get track ID for each song.
+#     track_id_list = get_track_ids(tracklist['artist'],tracklist['song'])
+
+#     # Append IDs to loaded dataframe.
+#     tracklist['track_id'] = track_id_list
+#     tracklist['rank'] = make_ranks(tracklist)
+
+#     # Use track IDs to get song features and save as dataframe.
+#     df = get_song_features(tracklist['song'],tracklist['track_id'])
+
+#     # Inner join features on track IDs.
+#     merged = tracklist.merge(df, how="inner", left_on='track_id',right_on='id').drop_duplicates("track_id").reset_index(drop=True)
+
+#     # Save the new dataframe as a new CSV.
+#     merged.to_csv("top_100_hip_hop_.csv",index=False)
+
+# if __name__=="__main__":
+#     main()
 
