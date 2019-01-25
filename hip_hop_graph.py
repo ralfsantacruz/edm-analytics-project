@@ -51,7 +51,7 @@ def make_hover_over_text(artist,year):
 
     return string
 
-def make_conditions(col_list):
+def make_conditions(col_list, extra_option=False):
 
     ''' Returns an array with lists of conditions for dropdown menus.'''
     
@@ -61,6 +61,11 @@ def make_conditions(col_list):
     for i in range(len(array)):
         array[i][i] = True
 
+    ############ This option is to add an extra "true" to the array to make sure there's an extra, invisible, trace always present to maintain y-axis length on line graph #########
+    if extra_option:
+        extra_option = np.full(shape=(len(col_list),1),fill_value=True,dtype=bool)       
+        array = np.append(array,extra_option,axis=1)
+    
     return array
 
 def make_buttons(top_artists,conditions):
@@ -71,7 +76,7 @@ def make_buttons(top_artists,conditions):
 
     for artist,condition in zip(top_artists,conditions):
         dic = {'label':artist,
-            'method':'restyle',
+            'method':'animate',
             'args':[{'visible': condition}]}
         buttons.append(dic)
 
@@ -191,11 +196,6 @@ def top_10_rappers_bar():
         title="# of Times on Billboard Hot 100",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
-        # yaxis=dict(
-        # tickfont=dict(
-        #     size=12,
-        #     color='black'
-        # ))
     )
 
     fig = go.Figure(data=[trace],layout=layout)
@@ -205,12 +205,17 @@ def top_10_rappers_bar():
 
 def top_10_rappers_line():
 
+    # Empty list to hold traces.
     data = []
 
     # Invoke grouped_artists() function to get data, and the list of the top artists.
     dic,top_artists = grouped_artists()
 
-    conditions = make_conditions(top_artists)
+    # Make conditions for drop down menu. Add extra option to maintain y-axis scaling.
+    conditions = make_conditions(top_artists,extra_option=True)
+    max_y_value = 0
+
+    # Make button options for dropdown menu.
     buttons = make_buttons(top_artists,conditions)
 
     # 2010-2018
@@ -218,8 +223,13 @@ def top_10_rappers_line():
 
     # Loop through top_artists to make traces for plot.
     for artist in top_artists:
+
         # Number of songs on billboard hot 100.
         num_hits = [v[artist] for v in dic.values()]
+
+        # Get the max y value out of all traces. Used for y-axis scaling.
+        if max_y_value < max(num_hits):
+            max_y_value = max(num_hits)
 
         # Only display the first trace.
         if artist == top_artists[0]:
@@ -236,6 +246,18 @@ def top_10_rappers_line():
             visible=visible
             )
         data.append(trace)
+    
+    # Add extra trace to make sure that scale on graph remains the same.
+    # Make the trace 'visible', but have no hover info or marker size.
+    trace = go.Scattergl(
+    x=[2010.1],
+    y=[max_y_value],
+    mode='lines',
+    visible=True,
+    hoverinfo='none'
+    )
+
+    data.append(trace)
 
 
     updatemenus = list([
