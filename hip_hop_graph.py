@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 
 import plotly.plotly as py
 import plotly.graph_objs as go
@@ -9,6 +10,8 @@ import plotly.offline as offline
 # Read in data.
 df = pd.read_csv("db_backup/top_100_hip_hop_.csv")
 
+
+############### Data Wrangling Functions ###############
 
 def grouped_artists():
 
@@ -32,6 +35,51 @@ def grouped_artists():
     dic = new_df.fillna(0).to_dict()
 
     return dic,top_artists
+
+def top_featured_artists(df):
+    
+    '''Returns a dataframe of an artist and number of features they have been on.'''
+    
+    # Make an empty list to hold all of our unique artists in the dataframe.
+    unique_artists = []
+    
+    # Split up strings in artist column to remove all features and collabs.
+    for artist in df['artist']:
+
+        unique_artist = artist.split(' Featuring ')[0]\
+                        .split(' & ')[0]\
+                        .split(' x ')[0]
+
+        unique_artists.append(unique_artist)
+
+    # Convert to a set, then back to list to remove duplicates in our list.
+    unique_artists = list(set(unique_artists))
+    
+    # Make empty dictionary to hold artist and number of features.
+    features_count = {}
+
+    for artist in unique_artists:
+        count = 0
+        
+        for artist_ in df['artist']:
+            feat = f"Featuring.*{artist}"
+            match = re.search(feat,artist_)
+            
+            if match:
+                count +=1
+
+        # Append key, value pair to dictionary
+        features_count[artist] = count
+
+    dic = {}
+    dic['artist'] = [k for k,v in features_count.items()]
+    dic['features'] = [v for k,v in features_count.items()]
+    
+    features_df= pd.DataFrame(dic)\
+                .sort_values(by='features', ascending=False)\
+                .reset_index(drop=True)
+    
+    return features_df
 
 ############### Plotting Parameter Functions ###############
 
@@ -68,16 +116,23 @@ def make_conditions(col_list, extra_option=False):
     
     return array
 
-def make_buttons(top_artists,conditions):
+def make_buttons(top_artists,frames):
 
-    '''Returns button options for dropdown menus.'''
+    '''Returns button options for dropdown menus. Buttons will rearrange graph for new data.'''
 
     buttons = []
 
-    for artist,condition in zip(top_artists,conditions):
-        dic = {'label':artist,
+    for artist,frame in zip(top_artists,frames):
+        dic = {
+            'label':artist,
             'method':'animate',
-            'args':[{'visible': condition}]}
+            'args': [
+                frame,
+                {'frame': {'duration': 300, 'redraw': False},
+                'transition': {'duration': 300}}
+            ]
+        }
+        
         buttons.append(dic)
 
     return buttons
@@ -207,7 +262,10 @@ def top_10_rappers_line():
 
     # Empty list to hold traces.
     data = []
-
+    
+    # Empty list to hold frames.
+    frames = []
+    
     # Invoke grouped_artists() function to get data, and the list of the top artists.
     dic,top_artists = grouped_artists()
 
@@ -215,8 +273,6 @@ def top_10_rappers_line():
     conditions = make_conditions(top_artists,extra_option=True)
     max_y_value = 0
 
-    # Make button options for dropdown menu.
-    buttons = make_buttons(top_artists,conditions)
 
     # 2010-2018
     years = [k[1] for k in dic.keys()]
@@ -233,19 +289,31 @@ def top_10_rappers_line():
 
         # Only display the first trace.
         if artist == top_artists[0]:
-            visible = True
-        else:
-            visible = 'legendonly'
-
-        trace = go.Scattergl(
-            x=years,
-            y=num_hits,
-            mode='lines',
-            name=artist,
-            text = [make_hover_over_text(artist,year) for year in years],
-            visible=visible
+            trace = go.Scattergl(
+                x=years,
+                y=num_hits,
+                mode='lines',
+                name='Artist',
+                text = [make_hover_over_text(artist,year) for year in years],
+                visible=True
             )
-        data.append(trace)
+            
+            data.append(trace)
+            
+        # Make frames for animation. 
+        frame = dict(
+            name=artist,
+            data = [dict(
+                x=years,
+                y=num_hits,
+                text = [make_hover_over_text(artist,year) for year in years]
+            )]
+        )
+        
+        frames.append(frame)
+    
+    # Make button options for dropdown menu.
+    buttons = make_buttons(top_artists,frames)
     
     # Add extra trace to make sure that scale on graph remains the same.
     # Make the trace 'visible', but have no hover info or marker size.
@@ -257,7 +325,7 @@ def top_10_rappers_line():
     hoverinfo='none'
     )
 
-    data.append(trace)
+    data.append(trace)   
 
 
     updatemenus = list([
@@ -277,13 +345,19 @@ def top_10_rappers_line():
     layout = go.Layout(
         updatemenus=updatemenus,
         showlegend=False,
-        title="# of Unique Songs on the Hot 100 Rap Charts",
+        title="Top 10 Artists' Hits this Decade",
+        yaxis=dict(
+            title="Number of hits on Hot 100",
+            titlefont=dict(
+                size=12
+            )
+        ),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
     )
 
 
-    fig = go.Figure(data=data, layout=layout)
+    fig = go.Figure(data=data, layout=layout,frames=[frames[0]])
 
     return offline.plot(fig, include_plotlyjs=False, output_type='div')
 
